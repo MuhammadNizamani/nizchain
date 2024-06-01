@@ -1,0 +1,83 @@
+name: Run Specific Functions
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Print directory contents
+      - name: Print directory contents
+        run: ls -R
+        # This step prints the contents of the current directory recursively.
+
+      # Step 3: Get changed Python files and functions
+      - name: Get changed Python files and functions
+        run: |
+          # Fetch latest changes from the remote repository
+          git fetch origin
+          # Get the base branch (usually 'main')
+          BASE_BRANCH=$(git merge-base origin/main HEAD)
+          # Get a list of changed Python files in the 'tests' directory
+          CHANGED_FILES=$(git diff --name-only $BASE_BRANCH HEAD | grep '^tests/.*\.py$' || true)
+          echo "Changed Python Test Files: $CHANGED_FILES"
+          # Store the list of changed files in the $GITHUB_ENV environment variable
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+
+          # Extract changed function names
+          CHANGED_FUNCTIONS=$(git diff -U0 $BASE_BRANCH HEAD $CHANGED_FILES | grep -E '^\+' | grep -E 'def ' | sed -E 's/^\+.*def ([a-zA-Z_][a-zA-Z0-9_]*)\(.*/\1/' || true)
+          echo "Changed Functions: $CHANGED_FUNCTIONS"
+          # Store the list of changed functions in the $GITHUB_ENV environment variable
+          echo "CHANGED_FUNCTIONS=$CHANGED_FUNCTIONS" >> $GITHUB_ENV
+
+      # Step 4: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.10"
+
+      # Step 5: Install dependencies
+      - name: Install dependencies
+        run: |
+          # Upgrade pip to the latest version
+          python -m pip install --upgrade pip
+          # Install Python dependencies from requirements.txt
+          pip install -r requirements.txt
+          # Install pytest for running tests
+          pip install pytest
+
+      # Step 6: Run affected tests
+      - name: Run affected tests
+        run: |
+          # Check if there are changed Python test files
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "Running affected tests."
+            # Convert the list of changed files to space-separated format
+            CHANGED_FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+
+            # Run specific functions if available
+            if [ -n "$CHANGED_FUNCTIONS" ]; then
+              echo "Running specific functions: $CHANGED_FUNCTIONS"
+              for func in $CHANGED_FUNCTIONS; do
+                # Run pytest with verbose output for specific functions
+                python -m pytest -v $CHANGED_FILES_LIST -k "$func"
+              done
+            else
+              # If no specific functions changed, run all tests in changed files
+              echo "No specific functions changed. Running all tests in changed files."
+              python -m pytest -v $CHANGED_FILES_LIST
+            fi
+          else
+            # If no Python test files changed, skip the tests
+            echo "No Python test files changed. Skipping tests."
+          fi
