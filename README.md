@@ -1,2 +1,2 @@
 # nizchain
-This is the project for creating python library 
+This is the project for creating python library
