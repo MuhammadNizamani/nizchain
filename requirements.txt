@@ -1,0 +1,5 @@
+imageio==2.33.1
+numpy==1.26.3
+pillow==10.2.0
+setuptools==69.5.1
+wheel==0.43.0
