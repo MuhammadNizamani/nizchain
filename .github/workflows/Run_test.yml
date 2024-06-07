@@ -18,25 +18,27 @@ jobs:
 
       # Step 2: Get current branch
       - name: Get current branch
-        id: get_current_branch
-        run: echo "current_branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
+        run: |
+          # Retrieve the current branch name
+          git rev-parse --abbrev-ref HEAD
+          data1=$(git rev-parse --abbrev-ref HEAD)
+          echo "Current branch: ${data1}"
 
       # Step 3: Get changed Python files
       - name: Get changed Python files
-        id: get_changed_files
         run: |
           # Fetch latest changes from the remote repository
           git fetch origin
           # Get the base branch (usually 'main')
-          BASE_BRANCH=$(git merge-base HEAD origin/main)
-          echo "Base branch: $BASE_BRANCH"
+          BASE_BRANCH=$(git rev-parse origin/main)
           # Get a list of changed Python files in the 'tests' directory
           CHANGED_FILES=$(git diff --name-only $BASE_BRANCH HEAD | grep '^tests/.*\.py$' || true)
-          echo "Changed files: $CHANGED_FILES"
           # Print the list of changed Python test files
           echo "Changed Python Test Files: $CHANGED_FILES"
           # Store the list of changed files in the $GITHUB_ENV environment variable
-          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+          echo 'CHANGED_FILES<<EOF' >> $GITHUB_ENV
+          echo "$CHANGED_FILES" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       # Step 4: Set up Python
       - name: Set up Python
@@ -54,7 +56,7 @@ jobs:
           # Install pytest for running tests
           pip install pytest
 
-      # Step 6: Print directory contents (for debugging purposes)
+      # Step 6: Print directory contents
       - name: Print directory contents
         run: |
           # List the contents of the current directory recursively
@@ -66,6 +68,8 @@ jobs:
           # Check if there are changed Python test files
           if [ -n "$CHANGED_FILES" ]; then
             echo "Running affected tests."
+            # Change directory to the root of the repository
+            cd $GITHUB_WORKSPACE
             # Convert the list of changed files to space-separated format
             CHANGED_FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
             # Run pytest with verbose output on the changed files
@@ -73,3 +77,4 @@ jobs:
           else
             # If no Python test files changed, skip the tests
             echo "No Python test files changed. Skipping tests."
+          fi
