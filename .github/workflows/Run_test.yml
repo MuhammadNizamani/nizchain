@@ -29,8 +29,10 @@ jobs:
           git fetch origin
           # Get the base branch (usually 'main')
           BASE_BRANCH=$(git merge-base HEAD origin/main)
+          echo "Base branch: $BASE_BRANCH"
           # Get a list of changed Python files in the 'tests' directory
           CHANGED_FILES=$(git diff --name-only $BASE_BRANCH HEAD | grep '^tests/.*\.py$' || true)
+          echo "Changed files: $CHANGED_FILES"
           # Print the list of changed Python test files
           echo "Changed Python Test Files: $CHANGED_FILES"
           # Store the list of changed files in the $GITHUB_ENV environment variable
@@ -40,7 +42,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       # Step 5: Install dependencies
       - name: Install dependencies
@@ -64,8 +66,6 @@ jobs:
           # Check if there are changed Python test files
           if [ -n "$CHANGED_FILES" ]; then
             echo "Running affected tests."
-            # Change directory to the root of the repository
-            cd $GITHUB_WORKSPACE
             # Convert the list of changed files to space-separated format
             CHANGED_FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
             # Run pytest with verbose output on the changed files

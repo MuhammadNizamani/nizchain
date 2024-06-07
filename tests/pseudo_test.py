@@ -1,4 +1,3 @@
-import pytest
 import nizchain.pseudo_function as pseudo_function
 
 
